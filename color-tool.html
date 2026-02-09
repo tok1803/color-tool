@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Comparison Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .color-slot {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .color-display {
+            width: 100%;
+            height: 150px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-display.empty {
+            background: linear-gradient(135deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(225deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(315deg, #f0f0f0 25%, #fff 25%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 0, 10px -10px, 0px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .camera-btn {
+            width: 100%;
+            padding: 12px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .camera-btn:active {
+            background: #0051D5;
+        }
+
+        .color-info {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .color-info div {
+            margin-bottom: 4px;
+        }
+
+        .color-info strong {
+            color: #333;
+        }
+
+        .camera-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .camera-modal.active {
+            display: flex;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
+
+        .capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: white;
+            border: 5px solid #007AFF;
+            margin: 0 auto;
+            display: block;
+            cursor: pointer;
+        }
+
+        .close-camera {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .picker-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .crosshair {
+            width: 40px;
+            height: 40px;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 10px;
+            background: #FF3B30;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .contrast-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .contrast-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .contrast-info {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .instructions {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Color Comparison Tool</h1>
+        
+        <div class="instructions">
+            <strong>How to use:</strong> Tap "Capture Color" to use your camera. Point at a color and tap the white button to capture it. Compare colors side by side with detailed info.
+        </div>
+
+        <div class="comparison-grid">
+            <div class="color-slot">
+                <div class="color-display empty" id="color1-display">
+                    Tap to capture
+                </div>
+                <button class="camera-btn" onclick="openCamera(1)">📷 Capture Color 1</button>
+                <div class="color-info" id="color1-info"></div>
+                <button class="reset-btn" onclick="resetColor(1)" style="display:none;" id="reset1">Clear</button>
+            </div>
+
+            <div class="color-slot">
+                <div class="color-display empty" id="color2-display">
+                    Tap to capture
+                </div>
+                <button class="camera-btn" onclick="openCamera(2)">📷 Capture Color 2</button>
+                <div class="color-info" id="color2-info"></div>
+                <button class="reset-btn" onclick="resetColor(2)" style="display:none;" id="reset2">Clear</button>
+            </div>
+        </div>
+
+        <div class="contrast-section" id="contrast-section" style="display:none;">
+            <h2>Color Comparison</h2>
+            <div class="contrast-info" id="contrast-info"></div>
+        </div>
+    </div>
+
+    <div class="camera-modal" id="cameraModal">
+        <video id="video" autoplay playsinline></video>
+        <div class="picker-overlay">
+            <div class="crosshair"></div>
+        </div>
+        <button class="close-camera" onclick="closeCamera()">×</button>
+        <div class="camera-controls">
+            <button class="capture-btn" onclick="captureColor()"></button>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        let stream = null;
+        let currentSlot = null;
+        const colors = {1: null, 2: null};
+
+        async function openCamera(slot) {
+            currentSlot = slot;
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('video');
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = stream;
+                modal.classList.add('active');
+            } catch (err) {
+                alert('Unable to access camera. Please ensure you have granted camera permissions.');
+                console.error(err);
+            }
+        }
+
+        function closeCamera() {
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('video');
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            video.srcObject = null;
+            modal.classList.remove('active');
+        }
+
+        function captureColor() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const imageData = ctx.getImageData(centerX, centerY, 1, 1);
+            const pixel = imageData.data;
+
+            const rgb = {
+                r: pixel[0],
+                g: pixel[1],
+                b: pixel[2]
+            };
+
+            colors[currentSlot] = rgb;
+            updateColorDisplay(currentSlot, rgb);
+            closeCamera();
+            updateComparison();
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? "0" + hex : hex;
+            }).join('');
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+
+            return {
+                h: Math.round(h * 360),
+                s: Math.round(s * 100),
+                l: Math.round(l * 100)
+            };
+        }
+
+        function getLuminance(r, g, b) {
+            const [rs, gs, bs] = [r, g, b].map(c => {
+                c = c / 255;
+                return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+        }
+
+        function getContrastRatio(rgb1, rgb2) {
+            const lum1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+            const lum2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+            const lighter = Math.max(lum1, lum2);
+            const darker = Math.min(lum1, lum2);
+            return (lighter + 0.05) / (darker + 0.05);
+        }
+
+        function updateColorDisplay(slot, rgb) {
+            const display = document.getElementById(`color${slot}-display`);
+            const info = document.getElementById(`color${slot}-info`);
+            const resetBtn = document.getElementById(`reset${slot}`);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+            display.style.backgroundColor = hex;
+            display.classList.remove('empty');
+            display.textContent = '';
+
+            info.innerHTML = `
+                <div><strong>HEX:</strong> ${hex}</div>
+                <div><strong>RGB:</strong> ${rgb.r}, ${rgb.g}, ${rgb.b}</div>
+                <div><strong>HSL:</strong> ${hsl.h}°, ${hsl.s}%, ${hsl.l}%</div>
+            `;
+
+            resetBtn.style.display = 'block';
+        }
+
+        function resetColor(slot) {
+            colors[slot] = null;
+            const display = document.getElementById(`color${slot}-display`);
+            const info = document.getElementById(`color${slot}-info`);
+            const resetBtn = document.getElementById(`reset${slot}`);
+
+            display.classList.add('empty');
+            display.style.backgroundColor = '';
+            display.textContent = 'Tap to capture';
+            info.innerHTML = '';
+            resetBtn.style.display = 'none';
+
+            updateComparison();
+        }
+
+        function updateComparison() {
+            const section = document.getElementById('contrast-section');
+            const info = document.getElementById('contrast-info');
+
+            if (colors[1] && colors[2]) {
+                const contrast = getContrastRatio(colors[1], colors[2]);
+                const passAA = contrast >= 4.5;
+                const passAAA = contrast >= 7;
+
+                info.innerHTML = `
+                    <div style="margin-bottom: 10px;"><strong>Contrast Ratio:</strong> ${contrast.toFixed(2)}:1</div>
+                    <div style="margin-bottom: 5px;">WCAG AA (normal text): ${passAA ? '✅ Pass' : '❌ Fail'}</div>
+                    <div>WCAG AAA (normal text): ${passAAA ? '✅ Pass' : '❌ Fail'}</div>
+                `;
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
