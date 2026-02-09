@@ -672,40 +672,41 @@
         }
 
         function getMatchAssessment(deltaE) {
-            // Delta E thresholds based on industry standards for paint matching
-            if (deltaE < 1.0) {
-                return {
-                    level: 'excellent',
-                    verdict: 'PERFECT MATCH ✓',
-                    description: 'Colors are virtually identical. Excellent repair work!',
-                    acceptable: true
-                };
-            } else if (deltaE < 2.0) {
+            // More lenient thresholds for practical repair work
+            // Accounts for lighting variations, camera sensor differences, and real-world conditions
+            if (deltaE < 2.5) {
                 return {
                     level: 'excellent',
                     verdict: 'EXCELLENT MATCH ✓',
-                    description: 'Difference is barely noticeable to the human eye. Very good match!',
+                    description: 'Colors match very well. Most people won\'t notice any difference.',
                     acceptable: true
                 };
-            } else if (deltaE < 3.5) {
+            } else if (deltaE < 5.0) {
                 return {
                     level: 'good',
                     verdict: 'GOOD MATCH ✓',
-                    description: 'Minor difference visible only under close inspection. Acceptable for most wall repairs.',
+                    description: 'Acceptable match. Difference is minimal and only visible under careful inspection.',
                     acceptable: true
                 };
-            } else if (deltaE < 6.0) {
+            } else if (deltaE < 8.0) {
                 return {
                     level: 'fair',
-                    verdict: 'FAIR MATCH ⚠',
-                    description: 'Noticeable difference. May be acceptable depending on lighting and viewing distance.',
+                    verdict: 'ACCEPTABLE MATCH ✓',
+                    description: 'Noticeable upon close inspection, but acceptable for most repair work. Lighting and viewing angle may hide differences.',
+                    acceptable: true
+                };
+            } else if (deltaE < 12.0) {
+                return {
+                    level: 'fair',
+                    verdict: 'BORDERLINE ⚠',
+                    description: 'Visible difference, but may be acceptable depending on location and lighting. Consider client expectations.',
                     acceptable: 'conditional'
                 };
             } else {
                 return {
                     level: 'poor',
-                    verdict: 'POOR MATCH ✗',
-                    description: 'Significant color difference. Recommend color adjustment or repainting.',
+                    verdict: 'NEEDS ADJUSTMENT ✗',
+                    description: 'Significant color difference that will be easily noticed. Recommend color correction.',
                     acceptable: false
                 };
             }
@@ -768,11 +769,11 @@
                         <div class="variance-details">
                             <div><strong>Delta E:</strong> ${deltaE.toFixed(2)} (lower is better)</div>
                             <div style="margin-top: 5px; font-size: 12px; opacity: 0.8;">
-                                • 0-1: Perfect match<br>
-                                • 1-2: Excellent (barely noticeable)<br>
-                                • 2-3.5: Good (acceptable for repairs)<br>
-                                • 3.5-6: Fair (may be noticeable)<br>
-                                • 6+: Poor (needs adjustment)
+                                • 0-2.5: Excellent match<br>
+                                • 2.5-5: Good match (acceptable)<br>
+                                • 5-8: Acceptable (minor difference)<br>
+                                • 8-12: Borderline (depends on context)<br>
+                                • 12+: Needs adjustment
                             </div>
                         </div>
                     </div>
