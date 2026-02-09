@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#007AFF">
+    <title>Color Comparison Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .status-message {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .instructions {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .color-slot {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .color-display {
+            width: 100%;
+            height: 150px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-display.empty {
+            background: linear-gradient(135deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(225deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(315deg, #f0f0f0 25%, #fff 25%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 0, 10px -10px, 0px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .camera-btn {
+            width: 100%;
+            padding: 12px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .camera-btn:active {
+            background: #0051D5;
+        }
+
+        .camera-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .color-info {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .color-info div {
+            margin-bottom: 4px;
+        }
+
+        .color-info strong {
+            color: #333;
+        }
+
+        .camera-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .camera-modal.active {
+            display: flex;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
+
+        .capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: white;
+            border: 5px solid #007AFF;
+            margin: 0 auto;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .capture-btn:active {
+            transform: scale(0.95);
+        }
+
+        .close-camera {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .picker-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .crosshair {
+            width: 40px;
+            height: 40px;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 10px;
+            background: #FF3B30;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .contrast-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .contrast-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .contrast-info {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .match-result {
+            background: #f8f9fa;
+            border-left: 4px solid #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 15px;
+        }
+
+        .match-result.excellent {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .match-result.good {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .match-result.fair {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .match-result.poor {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .match-result strong {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .variance-details {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-size: 13px;
+        }
+
+        .color-swatches {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .swatch {
+            flex: 1;
+            height: 60px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+
+        .permission-info {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .permission-info strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .test-btn {
+            background: #34C759;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Color Comparison Tool</h1>
+        
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="permission-info">
+            <strong>📱 Camera Permission Required</strong>
+            When you tap "Capture Color", your browser will ask for camera permission. Please tap "Allow" to use this tool.
+            <button class="camera-btn test-btn" onclick="testCamera()">🔍 Test Camera Access</button>
+        </div>
+        
+        <div class="instructions">
+            <strong>For Wall Repairs & Paint Matching:</strong> 
+            <br>Capture Color 1 from the original wall, and Color 2 from the repaired/painted area. The app will tell you if the colors match within acceptable range using industry-standard Delta E measurement.
+        </div>
+
+        <div class="comparison-grid">
+            <div class="color-slot">
+                <div class="color-display empty" id="color1-display">
+                    Tap below to capture
+                </div>
+                <button class="camera-btn" onclick="openCamera(1)">📷 Capture Color 1</button>
+                <div class="color-info" id="color1-info"></div>
+                <button class="reset-btn" onclick="resetColor(1)" style="display:none;" id="reset1">Clear</button>
+            </div>
+
+            <div class="color-slot">
+                <div class="color-display empty" id="color2-display">
+                    Tap below to capture
+                </div>
+                <button class="camera-btn" onclick="openCamera(2)">📷 Capture Color 2</button>
+                <div class="color-info" id="color2-info"></div>
+                <button class="reset-btn" onclick="resetColor(2)" style="display:none;" id="reset2">Clear</button>
+            </div>
+        </div>
+
+        <div class="contrast-section" id="contrast-section" style="display:none;">
+            <h2>🎨 Color Match Analysis</h2>
+            <div id="matchResult"></div>
+            <div class="contrast-info" id="contrast-info"></div>
+        </div>
+    </div>
+
+    <div class="camera-modal" id="cameraModal">
+        <video id="video" autoplay playsinline></video>
+        <div class="picker-overlay">
+            <div class="crosshair"></div>
+        </div>
+        <button class="close-camera" onclick="closeCamera()">×</button>
+        <div class="camera-controls">
+            <button class="capture-btn" onclick="captureColor()"></button>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        let stream = null;
+        let currentSlot = null;
+        const colors = {1: null, 2: null};
+
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status-message show ' + type;
+            
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 5000);
+        }
+
+        async function testCamera() {
+            showStatus('Testing camera access...', 'info');
+            
+            try {
+                // Check if mediaDevices is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera API not supported in this browser');
+                }
+
+                // Request camera permission
+                const testStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }
+                });
+                
+                // Success! Stop the test stream
+                testStream.getTracks().forEach(track => track.stop());
+                showStatus('✅ Camera access granted! You can now capture colors.', 'success');
+                
+            } catch (err) {
+                console.error('Camera test error:', err);
+                
+                let errorMsg = '❌ Camera access failed. ';
+                
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    errorMsg += 'Please allow camera permission in your browser settings.';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    errorMsg += 'No camera found on this device.';
+                } else if (err.name === 'NotSupportedError') {
+                    errorMsg += 'Camera not supported. Try using HTTPS or a different browser.';
+                } else if (err.name === 'NotReadableError') {
+                    errorMsg += 'Camera is being used by another app. Please close other apps using the camera.';
+                } else {
+                    errorMsg += err.message || 'Unknown error. Try using Chrome or Safari.';
+                }
+                
+                showStatus(errorMsg, 'error');
+            }
+        }
+
+        async function openCamera(slot) {
+            currentSlot = slot;
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('video');
+
+            try {
+                // Check for camera support
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera not supported. Please use HTTPS or a modern browser (Chrome, Safari, Firefox).');
+                }
+
+                showStatus('Requesting camera access...', 'info');
+
+                // Request camera with specific constraints
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                video.srcObject = stream;
+                modal.classList.add('active');
+                showStatus('Camera ready! Point at a color and tap the white button.', 'success');
+                
+            } catch (err) {
+                console.error('Camera error:', err);
+                
+                let errorMsg = 'Camera access failed. ';
+                
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    errorMsg += 'Please allow camera permission when prompted. Check your browser settings if needed.';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    errorMsg += 'No camera found on this device.';
+                } else if (err.name === 'NotSupportedError') {
+                    errorMsg += 'Camera not supported. Make sure you\'re using HTTPS and a modern browser.';
+                } else if (err.name === 'NotReadableError') {
+                    errorMsg += 'Camera is already in use. Please close other apps using the camera.';
+                } else if (err.message) {
+                    errorMsg += err.message;
+                } else {
+                    errorMsg += 'Unknown error. Try Chrome or Safari browsers.';
+                }
+                
+                showStatus(errorMsg, 'error');
+            }
+        }
+
+        function closeCamera() {
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('video');
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            video.srcObject = null;
+            modal.classList.remove('active');
+        }
+
+        function captureColor() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Make sure video is ready
+            if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                showStatus('Camera not ready yet. Please wait a moment.', 'error');
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // Sample a small area for more accurate color
+            const sampleSize = 5;
+            const imageData = ctx.getImageData(
+                centerX - sampleSize/2, 
+                centerY - sampleSize/2, 
+                sampleSize, 
+                sampleSize
+            );
+            
+            // Average the colors in the sample area
+            let r = 0, g = 0, b = 0;
+            const pixels = imageData.data;
+            const pixelCount = (sampleSize * sampleSize);
+            
+            for (let i = 0; i < pixels.length; i += 4) {
+                r += pixels[i];
+                g += pixels[i + 1];
+                b += pixels[i + 2];
+            }
+            
+            const rgb = {
+                r: Math.round(r / pixelCount),
+                g: Math.round(g / pixelCount),
+                b: Math.round(b / pixelCount)
+            };
+
+            colors[currentSlot] = rgb;
+            updateColorDisplay(currentSlot, rgb);
+            closeCamera();
+            updateComparison();
+            showStatus(`Color ${currentSlot} captured successfully!`, 'success');
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? "0" + hex : hex;
+            }).join('');
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+
+            return {
+                h: Math.round(h * 360),
+                s: Math.round(s * 100),
+                l: Math.round(l * 100)
+            };
+        }
+
+        function getLuminance(r, g, b) {
+            const [rs, gs, bs] = [r, g, b].map(c => {
+                c = c / 255;
+                return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+        }
+
+        function getContrastRatio(rgb1, rgb2) {
+            const lum1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+            const lum2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+            const lighter = Math.max(lum1, lum2);
+            const darker = Math.min(lum1, lum2);
+            return (lighter + 0.05) / (darker + 0.05);
+        }
+
+        // Convert RGB to LAB color space (needed for Delta E calculation)
+        function rgbToLab(r, g, b) {
+            // First convert RGB to XYZ
+            let rLinear = r / 255;
+            let gLinear = g / 255;
+            let bLinear = b / 255;
+
+            rLinear = rLinear > 0.04045 ? Math.pow((rLinear + 0.055) / 1.055, 2.4) : rLinear / 12.92;
+            gLinear = gLinear > 0.04045 ? Math.pow((gLinear + 0.055) / 1.055, 2.4) : gLinear / 12.92;
+            bLinear = bLinear > 0.04045 ? Math.pow((bLinear + 0.055) / 1.055, 2.4) : bLinear / 12.92;
+
+            let x = (rLinear * 0.4124 + gLinear * 0.3576 + bLinear * 0.1805) * 100;
+            let y = (rLinear * 0.2126 + gLinear * 0.7152 + bLinear * 0.0722) * 100;
+            let z = (rLinear * 0.0193 + gLinear * 0.1192 + bLinear * 0.9505) * 100;
+
+            // Convert XYZ to LAB (using D65 illuminant)
+            x = x / 95.047;
+            y = y / 100.000;
+            z = z / 108.883;
+
+            x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16/116);
+            y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16/116);
+            z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16/116);
+
+            return {
+                l: (116 * y) - 16,
+                a: 500 * (x - y),
+                b: 200 * (y - z)
+            };
+        }
+
+        // Calculate Delta E (CIE76) - industry standard for color difference
+        function calculateDeltaE(rgb1, rgb2) {
+            const lab1 = rgbToLab(rgb1.r, rgb1.g, rgb1.b);
+            const lab2 = rgbToLab(rgb2.r, rgb2.g, rgb2.b);
+
+            const deltaL = lab1.l - lab2.l;
+            const deltaA = lab1.a - lab2.a;
+            const deltaB = lab1.b - lab2.b;
+
+            return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
+        }
+
+        // Calculate simple RGB difference percentage
+        function calculateRGBDifference(rgb1, rgb2) {
+            const rDiff = Math.abs(rgb1.r - rgb2.r);
+            const gDiff = Math.abs(rgb1.g - rgb2.g);
+            const bDiff = Math.abs(rgb1.b - rgb2.b);
+            
+            const avgDiff = (rDiff + gDiff + bDiff) / 3;
+            return (avgDiff / 255) * 100;
+        }
+
+        function getMatchAssessment(deltaE) {
+            // Delta E thresholds based on industry standards for paint matching
+            if (deltaE < 1.0) {
+                return {
+                    level: 'excellent',
+                    verdict: 'PERFECT MATCH ✓',
+                    description: 'Colors are virtually identical. Excellent repair work!',
+                    acceptable: true
+                };
+            } else if (deltaE < 2.0) {
+                return {
+                    level: 'excellent',
+                    verdict: 'EXCELLENT MATCH ✓',
+                    description: 'Difference is barely noticeable to the human eye. Very good match!',
+                    acceptable: true
+                };
+            } else if (deltaE < 3.5) {
+                return {
+                    level: 'good',
+                    verdict: 'GOOD MATCH ✓',
+                    description: 'Minor difference visible only under close inspection. Acceptable for most wall repairs.',
+                    acceptable: true
+                };
+            } else if (deltaE < 6.0) {
+                return {
+                    level: 'fair',
+                    verdict: 'FAIR MATCH ⚠',
+                    description: 'Noticeable difference. May be acceptable depending on lighting and viewing distance.',
+                    acceptable: 'conditional'
+                };
+            } else {
+                return {
+                    level: 'poor',
+                    verdict: 'POOR MATCH ✗',
+                    description: 'Significant color difference. Recommend color adjustment or repainting.',
+                    acceptable: false
+                };
+            }
+        }
+
+        function updateColorDisplay(slot, rgb) {
+            const display = document.getElementById(`color${slot}-display`);
+            const info = document.getElementById(`color${slot}-info`);
+            const resetBtn = document.getElementById(`reset${slot}`);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+            display.style.backgroundColor = hex;
+            display.classList.remove('empty');
+            display.textContent = '';
+
+            info.innerHTML = `
+                <div><strong>HEX:</strong> ${hex}</div>
+                <div><strong>RGB:</strong> ${rgb.r}, ${rgb.g}, ${rgb.b}</div>
+                <div><strong>HSL:</strong> ${hsl.h}°, ${hsl.s}%, ${hsl.l}%</div>
+            `;
+
+            resetBtn.style.display = 'block';
+        }
+
+        function resetColor(slot) {
+            colors[slot] = null;
+            const display = document.getElementById(`color${slot}-display`);
+            const info = document.getElementById(`color${slot}-info`);
+            const resetBtn = document.getElementById(`reset${slot}`);
+
+            display.classList.add('empty');
+            display.style.backgroundColor = '';
+            display.textContent = 'Tap below to capture';
+            info.innerHTML = '';
+            resetBtn.style.display = 'none';
+
+            updateComparison();
+        }
+
+        function updateComparison() {
+            const section = document.getElementById('contrast-section');
+            const info = document.getElementById('contrast-info');
+            const matchResultDiv = document.getElementById('matchResult');
+
+            if (colors[1] && colors[2]) {
+                const deltaE = calculateDeltaE(colors[1], colors[2]);
+                const rgbDiff = calculateRGBDifference(colors[1], colors[2]);
+                const assessment = getMatchAssessment(deltaE);
+                const contrast = getContrastRatio(colors[1], colors[2]);
+                
+                const hex1 = rgbToHex(colors[1].r, colors[1].g, colors[1].b);
+                const hex2 = rgbToHex(colors[2].r, colors[2].g, colors[2].b);
+
+                // Display match result prominently
+                matchResultDiv.innerHTML = `
+                    <div class="match-result ${assessment.level}">
+                        <strong>${assessment.verdict}</strong>
+                        <div>${assessment.description}</div>
+                        <div class="variance-details">
+                            <div><strong>Delta E:</strong> ${deltaE.toFixed(2)} (lower is better)</div>
+                            <div style="margin-top: 5px; font-size: 12px; opacity: 0.8;">
+                                • 0-1: Perfect match<br>
+                                • 1-2: Excellent (barely noticeable)<br>
+                                • 2-3.5: Good (acceptable for repairs)<br>
+                                • 3.5-6: Fair (may be noticeable)<br>
+                                • 6+: Poor (needs adjustment)
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Color swatches
+                info.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Side-by-Side Comparison:</strong>
+                        <div class="color-swatches">
+                            <div class="swatch" style="background-color: ${hex1};" title="Color 1"></div>
+                            <div class="swatch" style="background-color: ${hex2};" title="Color 2"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;"><strong>Technical Details:</strong></div>
+                    <div style="margin-bottom: 5px;">RGB Difference: ${rgbDiff.toFixed(1)}%</div>
+                    <div style="margin-bottom: 5px;">Individual Channel Differences:</div>
+                    <div style="margin-left: 15px; font-size: 13px;">
+                        <div>Red: ${Math.abs(colors[1].r - colors[2].r)} (${((Math.abs(colors[1].r - colors[2].r)/255)*100).toFixed(1)}%)</div>
+                        <div>Green: ${Math.abs(colors[1].g - colors[2].g)} (${((Math.abs(colors[1].g - colors[2].g)/255)*100).toFixed(1)}%)</div>
+                        <div>Blue: ${Math.abs(colors[1].b - colors[2].b)} (${((Math.abs(colors[1].b - colors[2].b)/255)*100).toFixed(1)}%)</div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                        <strong>Accessibility (if used for text/background):</strong>
+                        <div style="margin-top: 5px;">Contrast Ratio: ${contrast.toFixed(2)}:1</div>
+                    </div>
+                `;
+                
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        // Check for HTTPS on load
+        window.addEventListener('load', () => {
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                showStatus('⚠️ Warning: Camera may not work on non-HTTPS sites. If you have issues, make sure your URL starts with https://', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
